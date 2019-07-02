@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <title>Motion Detection Zone Editor</title>
+</head>
+<body>
+ <h3>Motion Detection Zone Editor</h3>
+ <HR>
+ <div style='width:80%; float:right'>
+  <canvas id='canvas'></canvas>
+ </div>
+ <div style='width:20%;'>
+ <label>Camera: <select id='selImg'></select></label>
+ <HR>
+ X (<span id='sX'></span>): <input id='rX' type='range' value='0' min='0' max='1'> <BR>
+ Y (<span id='sY'></span>): <input id='rY' type='range' value='0' min='0' max='1'> <BR>
+ Width (<span id='sW'></span>): <input id='rW' type='range' value='100' min='1' max='100'> <BR>
+ Height (<span id='sH'></span>): <input id='rH' type='range' value='100' min='1' max='100'> <BR>
+<HR>
+ <label>Presets: <select id='selPresets'></select></label>
+</div>
+
+ <script>
+let src =  ["109.png", "109-night.png",
+			"110.png", "110-night.png",
+		    "111.png", "111-night.png", 
+			"onvif1b.png", "onvif1.png", 'samsungprime.jpg'];
+
+let motion_zones = {
+					 109      : { x: 306, y: 40,  w: 215, h: 208},
+					 '109-night' : { x: 0, y: 173,  w: 640, h: 176},
+					 '109b'   : { x: 0, y: 160, w: 639, h: 190},
+
+					 110      : {x: 100,  y: 229, w: 89,  h: 122},
+					 '110b'   : {x: 110,  y: 248, w: 123, h: 103},
+					 '110c'   : {x: 118,  y: 203, w: 228, h: 147},
+					 111      : { x: 0,   y: 40,  w: 640, h: 310},
+					 'onvif1a': { x: 180, y: 65,  w: 300, h: 250},
+					 'onvif1b': { x: 245, y: 34,  w: 33,  h: 39},
+					 'samsungprime': { x: 503, y: 84,  w: 90,  h: 66}
+                   }
+
+  var selImg = document.getElementById('selImg')
+  var selPreset = document.getElementById('selPresets')
+
+  var canvas = document.getElementById('canvas')
+  var ctx    = canvas.getContext('2d')
+  var rX     = document.getElementById('rX')
+  var rY     = document.getElementById('rY')
+  var rW     = document.getElementById('rW')
+  var rH     = document.getElementById('rH')
+
+  var sX     = document.getElementById('sX')
+  var sY     = document.getElementById('sY')
+  var sW     = document.getElementById('sW')
+  var sH     = document.getElementById('sH')
+
+  var images = [];
+
+  im = src.map((el, idx)=>{
+					var img = new Image(); 
+					img.onload = function(){ 
+													console.log('image was loaded', this.src, this.width, 'x', this.height)
+
+										rX.max = this.width
+										rY.max = this.height
+										rW.max = this.width
+										rH.max = this.height
+										rW.value = rW.max
+										rH.value = rH.max
+
+					} 
+					img.onerror = function(err){ console.log('Error loading', this.src, err)} 
+					img.src = el; 
+					images.push(img)
+					return img })
+
+	images.forEach((el,idx)=>{
+		let opt = document.createElement('option')
+		opt.value = idx;
+		opt.text = `Camera ${idx}`
+
+		selImg.options.add(opt)
+	})
+
+	var drawRects = function(){
+		console.log('Index selected',selImg.selectedIndex)
+		
+		let img = images[ selImg.selectedIndex ]
+
+		console.log(img.width, img.height)
+
+		canvas.width = img.width
+		canvas.height = img.height
+
+		ctx.clearRect(0, 0, canvas.width, canvas.height)
+		ctx.drawImage( img, 0, 0)
+
+		ctx.lineWidth = '2';
+		ctx.strokeStyle = 'green';
+
+		sX.textContent = rX.value.toString()
+		sY.textContent = rY.value.toString()
+		sW.textContent = rW.value.toString()
+		sH.textContent = rH.value.toString()
+
+/*
+		if (rX.value + rW.value > img.width){
+			rW.value = img.width - rX.value
+			rW.max = rW.value
+		} else {
+			rW.max = img.width
+		}
+
+		if (rY.value + rH.value > img.height)
+			rH.value = img.height - rY.value
+*/
+		ctx.strokeRect(rX.value, rY.value, rW.value, rH.value)		
+		console.log('strokeRect', rX.value, rY.value, rW.value, rH.value)
+	}
+
+	document.querySelectorAll('input[type=range]').forEach(el=>{
+		el.onchange = drawRects
+	})
+
+	selImg.onchange = function(){
+							let img = images[ selImg.selectedIndex ]
+
+							rW.max = img.width
+							rH.max = img.height
+							rX.max = rW.max
+							rY.max = rH.max
+
+							//if (rW.value > rW.max) rW.value = rW.max;
+							//if (rH.value > rH.max) rH.value = rH.max;
+
+							if (rX.value > rW.max) rX.value = rX.max
+							if (rY.value > rY.max) rY.value = rY.max
+
+							console.log('Limits', rX.max, rY.max, rW.max, rH.max)
+							drawRects()
+					  }
+
+	if (selImg.options.length) {
+		selImg.selectedIndex = 0
+		selImg.options[0].selected = true
+		drawRects()
+	}	
+
+	var idx = 0;
+
+	for(let p in motion_zones){
+		let opt = document.createElement('option')
+		opt.value = p;
+		opt.text = `Cam ${p}`
+
+		selPresets.options.add(opt)
+		idx++
+	}
+	selPresets.onchange = function(){
+		let z = motion_zones[this.options[this.selectedIndex].value]
+
+		console.log('selPresets',this.options[this.selectedIndex].value, z)
+
+		let img = images[ selImg.selectedIndex ]
+
+		rW.max = img.width
+		rH.max = img.height
+
+		//rW.max = z.w
+		//rH.max = z.h
+
+		rX.value = z.x
+		rY.value = z.y
+		rW.value = z.w
+		rH.value = z.h
+		drawRects()
+	}
+
+	// 109 : rX.value = 306; rY.value = 40; rW.value = 215; rH.value = 208; drawRects();
+	// 110 : rX.value = 79; rY.value = 31; rW.value = 307; rH.value = 315; drawRects();
+	// 111 : rX.value = 0; rY.value = 31; rW.value = 640; rH.value = 352; drawRects();
+ </script>
+</body>
+</html>
